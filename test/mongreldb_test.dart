@@ -13,8 +13,9 @@ import 'dart:io';
 import 'package:mongreldb/mongreldb.dart';
 import 'package:test/test.dart';
 
-final Uri _serverUri =
-    Uri.parse(Platform.environment['MONGRELDB_URL'] ?? 'http://127.0.0.1:8453');
+final Uri _serverUri = Uri.parse(
+  Platform.environment['MONGRELDB_URL'] ?? 'http://127.0.0.1:8453',
+);
 
 bool? _reachableCache;
 
@@ -22,11 +23,12 @@ Future<bool> _serverReachable() async {
   if (_reachableCache != null) return _reachableCache!;
   try {
     final client = HttpClient();
-    final req =
-        await client.getUrl(_serverUri.replace(path: '/health')).timeout(
-      const Duration(seconds: 2),
-      onTimeout: () => throw TimeoutException('health check timed out'),
-    );
+    final req = await client
+        .getUrl(_serverUri.replace(path: '/health'))
+        .timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => throw TimeoutException('health check timed out'),
+        );
     final resp = await req.close().timeout(
       const Duration(seconds: 2),
       onTimeout: () => throw TimeoutException('health read timed out'),
@@ -51,20 +53,26 @@ Future<MongrelDB> _connect() async {
 }
 
 const _columns = <Map<String, Object?>>[
-  {'id': 1, 'name': 'id', 'ty': 'int64', 'primary_key': true, 'nullable': false},
+  {
+    'id': 1,
+    'name': 'id',
+    'ty': 'int64',
+    'primary_key': true,
+    'nullable': false,
+  },
   {
     'id': 2,
     'name': 'label',
     'ty': 'varchar',
     'primary_key': false,
-    'nullable': false
+    'nullable': false,
   },
   {
     'id': 3,
     'name': 'amount',
     'ty': 'float64',
     'primary_key': false,
-    'nullable': false
+    'nullable': false,
   },
 ];
 
@@ -95,10 +103,7 @@ void main() {
 
       expect(await db.count(table), 2);
 
-      final rows = await db
-          .query(table)
-          .where('pk', {'value': 2})
-          .execute();
+      final rows = await db.query(table).where('pk', {'value': 2}).execute();
       expect(rows, isNotEmpty);
     });
 
@@ -113,8 +118,11 @@ void main() {
 
       await db.createTable(table, _columns);
       await db.put(table, {1: 1, 2: 'alpha', 3: 10.0});
-      await db.upsert(table, {1: 1, 2: 'alpha', 3: 99.0},
-          updateCells: {3: 99.0});
+      await db.upsert(
+        table,
+        {1: 1, 2: 'alpha', 3: 99.0},
+        updateCells: {3: 99.0},
+      );
 
       expect(await db.count(table), 1);
     });
@@ -160,8 +168,10 @@ void main() {
       await db.createTable(table, _columns);
       await db.put(table, {1: 1, 2: 'alpha', 3: 1.0});
       // INSERT then SELECT. SELECT may return Arrow IPC bytes (decoded as []).
-      await db.sql("INSERT INTO $table (id, label, amount) "
-          "VALUES (2, 'beta', 2.0)");
+      await db.sql(
+        "INSERT INTO $table (id, label, amount) "
+        "VALUES (2, 'beta', 2.0)",
+      );
       expect(await db.count(table), 2);
     });
 

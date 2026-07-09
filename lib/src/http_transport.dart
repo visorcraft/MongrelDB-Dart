@@ -47,8 +47,8 @@ class HttpTransport {
   final Duration timeout;
 
   HttpTransport({Duration? idleTimeout, Duration? timeout})
-      : idleTimeout = idleTimeout ?? const Duration(seconds: 30),
-        timeout = timeout ?? const Duration(seconds: 60);
+    : idleTimeout = idleTimeout ?? const Duration(seconds: 30),
+      timeout = timeout ?? const Duration(seconds: 60);
 
   /// Lazily build (and configure) the [HttpClient].
   HttpClient get _http {
@@ -95,11 +95,15 @@ class HttpTransport {
           throw QueryException('Unsupported HTTP method: $method');
       }
     } on SocketException catch (e) {
-      throw ConnectionException('Cannot reach MongrelDB daemon: ${e.message}',
-          cause: e);
+      throw ConnectionException(
+        'Cannot reach MongrelDB daemon: ${e.message}',
+        cause: e,
+      );
     } on HttpException catch (e) {
-      throw ConnectionException('HTTP error talking to MongrelDB: $e',
-          cause: e);
+      throw ConnectionException(
+        'HTTP error talking to MongrelDB: $e',
+        cause: e,
+      );
     }
 
     headers.forEach((name, value) => req.headers.add(name, value));
@@ -114,7 +118,8 @@ class HttpTransport {
       resp = await req.close().timeout(
         timeout,
         onTimeout: () => throw ConnectionException(
-            'Timed out waiting for MongrelDB after $timeout'),
+          'Timed out waiting for MongrelDB after $timeout',
+        ),
       );
     } on SocketException catch (e) {
       throw ConnectionException('Connection broken: ${e.message}', cause: e);

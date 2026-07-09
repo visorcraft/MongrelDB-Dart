@@ -20,9 +20,27 @@ Future<void> main() async {
     }
 
     await db.createTable('demo', [
-      {'id': 1, 'name': 'id', 'ty': 'int64', 'primary_key': true, 'nullable': false},
-      {'id': 2, 'name': 'label', 'ty': 'varchar', 'primary_key': false, 'nullable': false},
-      {'id': 3, 'name': 'amount', 'ty': 'float64', 'primary_key': false, 'nullable': false},
+      {
+        'id': 1,
+        'name': 'id',
+        'ty': 'int64',
+        'primary_key': true,
+        'nullable': false,
+      },
+      {
+        'id': 2,
+        'name': 'label',
+        'ty': 'varchar',
+        'primary_key': false,
+        'nullable': false,
+      },
+      {
+        'id': 3,
+        'name': 'amount',
+        'ty': 'float64',
+        'primary_key': false,
+        'nullable': false,
+      },
     ]);
 
     await db.put('demo', {1: 1, 2: 'first', 3: 10.0});
@@ -30,7 +48,11 @@ Future<void> main() async {
     print('count: ${await db.count('demo')}');
 
     // Upsert: change the second row.
-    await db.upsert('demo', {1: 2, 2: 'second', 3: 42.0}, updateCells: {3: 42.0});
+    await db.upsert(
+      'demo',
+      {1: 2, 2: 'second', 3: 42.0},
+      updateCells: {3: 42.0},
+    );
 
     // Read it back via the query builder.
     final rows = await db.query('demo').where('pk', {'value': 2}).execute();

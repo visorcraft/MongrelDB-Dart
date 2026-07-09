@@ -82,7 +82,9 @@ class QueryBuilder {
 
   /// Translate friendly aliases to the server's canonical wire keys.
   Map<String, dynamic> _normalizeCondition(
-      String type, Map<String, Object?> params) {
+    String type,
+    Map<String, Object?> params,
+  ) {
     const aliases = <String, String>{
       'column': 'column_id',
       'min': 'lo',

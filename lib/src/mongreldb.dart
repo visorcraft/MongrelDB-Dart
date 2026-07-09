@@ -56,25 +56,31 @@ class MongrelDB {
     this.username,
     this.password,
     HttpTransport? transport,
-  })  : transport = transport ?? HttpTransport(),
-        _defaultHeaders = {
-          'Accept': 'application/json',
-          if (token != null)
-            'Authorization': 'Bearer $token'
-          else if (username != null)
-            'Authorization':
-                'Basic ${base64Encode(utf8.encode('$username:${password ?? ''}'))}',
-        };
+  }) : transport = transport ?? HttpTransport(),
+       _defaultHeaders = {
+         'Accept': 'application/json',
+         if (token != null)
+           'Authorization': 'Bearer $token'
+         else if (username != null)
+           'Authorization':
+               'Basic ${base64Encode(utf8.encode('$username:${password ?? ''}'))}',
+       };
 
   // -- HTTP helpers ----------------------------------------------------------
 
   Future<Response> get(String path, {Map<String, String>? headers}) =>
       _request('GET', path, headers ?? const {});
 
-  Future<Response> post(String path, dynamic data,
-          {Map<String, String>? headers}) =>
-      _request('POST', path, headers ?? {},
-          body: data == null ? null : _encodeJson(data));
+  Future<Response> post(
+    String path,
+    dynamic data, {
+    Map<String, String>? headers,
+  }) => _request(
+    'POST',
+    path,
+    headers ?? {},
+    body: data == null ? null : _encodeJson(data),
+  );
 
   Future<Response> deleteRaw(String path, {Map<String, String>? headers}) =>
       _request('DELETE', path, headers ?? const {});
@@ -86,18 +92,24 @@ class MongrelDB {
   /// the whole request.
   String _encodeJson(Object? data) {
     try {
-      return jsonEncode(data,
-          toEncodable: (Object? nonEncodable) => throw FormatException(
-              'Cannot JSON-encode value of type '
-              '${nonEncodable.runtimeType}'));
+      return jsonEncode(
+        data,
+        toEncodable: (Object? nonEncodable) => throw FormatException(
+          'Cannot JSON-encode value of type '
+          '${nonEncodable.runtimeType}',
+        ),
+      );
     } on JsonUnsupportedObjectError catch (e) {
       throw QueryException(
-          'Request payload cannot be JSON-encoded. '
-          'INF, NaN, and recursive structures have no JSON representation.',
-          cause: e);
+        'Request payload cannot be JSON-encoded. '
+        'INF, NaN, and recursive structures have no JSON representation.',
+        cause: e,
+      );
     } on FormatException catch (e) {
-      throw QueryException('Request payload cannot be JSON-encoded: $e',
-          cause: e);
+      throw QueryException(
+        'Request payload cannot be JSON-encoded: $e',
+        cause: e,
+      );
     }
   }
 
@@ -109,7 +121,8 @@ class MongrelDB {
     String? body,
   }) async {
     final merged = <String, String>{..._defaultHeaders, ...headers};
-    final full = '${url.replaceAll(RegExp(r'/+$'), '')}'
+    final full =
+        '${url.replaceAll(RegExp(r'/+$'), '')}'
         '/${path.replaceAll(RegExp(r'^/+'), '')}';
 
     final Response response;
@@ -145,9 +158,9 @@ class MongrelDB {
     switch (status) {
       case 401:
       case 403:
-        throw AuthException(message.isNotEmpty
-            ? message
-            : 'Authentication failed ($status)');
+        throw AuthException(
+          message.isNotEmpty ? message : 'Authentication failed ($status)',
+        );
       case 404:
         throw NotFoundException(message.isNotEmpty ? message : 'Not found');
       case 409:
@@ -158,7 +171,8 @@ class MongrelDB {
         );
       default:
         throw QueryException(
-            message.isNotEmpty ? message : 'Server error ($status)');
+          message.isNotEmpty ? message : 'Server error ($status)',
+        );
     }
   }
 
@@ -186,7 +200,10 @@ class MongrelDB {
 
   /// Create a table. [columns] is a list of column descriptors.
   /// Returns the new table id reported by the daemon.
-  Future<int> createTable(String name, List<Map<String, Object?>> columns) async {
+  Future<int> createTable(
+    String name,
+    List<Map<String, Object?>> columns,
+  ) async {
     final r = await post('/kit/create_table', {
       'name': name,
       'columns': columns,
@@ -223,7 +240,9 @@ class MongrelDB {
   }) async {
     final payload = <String, dynamic>{
       'ops': [
-        {'put': {'table': table, 'cells': _cellsToFlat(cells)}},
+        {
+          'put': {'table': table, 'cells': _cellsToFlat(cells)},
+        },
       ],
     };
     if (idempotencyKey != null) {
@@ -245,10 +264,7 @@ class MongrelDB {
     Map<int, Object?>? updateCells,
     String? idempotencyKey,
   }) async {
-    final op = <String, dynamic>{
-      'table': table,
-      'cells': _cellsToFlat(cells),
-    };
+    final op = <String, dynamic>{'table': table, 'cells': _cellsToFlat(cells)};
     if (updateCells != null) {
       op['update_cells'] = _cellsToFlat(updateCells);
     }
@@ -273,7 +289,9 @@ class MongrelDB {
   Future<void> delete(String table, int rowId) async {
     await post('/kit/txn', {
       'ops': [
-        {'delete': {'table': table, 'row_id': rowId}},
+        {
+          'delete': {'table': table, 'row_id': rowId},
+        },
       ],
     });
   }
@@ -282,7 +300,9 @@ class MongrelDB {
   Future<void> deleteByPk(String table, Object? pk) async {
     await post('/kit/txn', {
       'ops': [
-        {'delete_by_pk': {'table': table, 'pk': pk}},
+        {
+          'delete_by_pk': {'table': table, 'pk': pk},
+        },
       ],
     });
   }

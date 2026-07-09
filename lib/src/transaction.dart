@@ -25,8 +25,11 @@ class Transaction {
   Transaction(this._client);
 
   /// Stage an insert.
-  Transaction put(String table, Map<int, Object?> cells,
-      {bool returning = false}) {
+  Transaction put(
+    String table,
+    Map<int, Object?> cells, {
+    bool returning = false,
+  }) {
     _ops.add({
       'put': {
         'table': table,
@@ -87,7 +90,9 @@ class Transaction {
       _committed = true;
       return const [];
     }
-    final payload = <String, dynamic>{'ops': List<Map<String, dynamic>>.from(_ops)};
+    final payload = <String, dynamic>{
+      'ops': List<Map<String, dynamic>>.from(_ops),
+    };
     if (idempotencyKey != null) {
       payload['idempotency_key'] = idempotencyKey;
     }

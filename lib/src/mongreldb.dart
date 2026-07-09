@@ -76,7 +76,7 @@ class MongrelDB {
       _request('POST', path, headers ?? {},
           body: data == null ? null : _encodeJson(data));
 
-  Future<Response> delete(String path, {Map<String, String>? headers}) =>
+  Future<Response> deleteRaw(String path, {Map<String, String>? headers}) =>
       _request('DELETE', path, headers ?? const {});
 
   /// JSON-encode a request payload.
@@ -200,7 +200,7 @@ class MongrelDB {
 
   /// Drop a table by name.
   Future<void> dropTable(String name) async {
-    await delete('/tables/$name');
+    await deleteRaw('/tables/$name');
   }
 
   /// Row count for a table.
@@ -329,7 +329,7 @@ class MongrelDB {
 
   /// Compact all tables (merge sorted runs).
   Future<Map<String, dynamic>> compact() async {
-    final r = await post('/compact');
+    final r = await post('/compact', <String, dynamic>{});
     return r.json() as Map<String, dynamic>? ?? const {};
   }
 

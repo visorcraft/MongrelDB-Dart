@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (Dart ${{ matrix.sdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.0 is the supported minimum; 3.x exercises the latest stable.
+        sdk: ['3.0', stable]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Dart ${{ matrix.sdk }}
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ matrix.sdk }}
+
+      - name: Cache pub packages
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-dart-${{ matrix.sdk }}-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: ${{ runner.os }}-dart-${{ matrix.sdk }}-
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: dart analyze --fatal-infos
+
+      - name: Run unit tests (offline-safe)
+        run: dart test
+
+  live:
+    # The layer that catches client/server contract drift. Downloads a
+    # mongreldb-server binary, starts it, and runs the live round-trip suite.
+    name: Live integration (against mongreldb-server)
+    runs-on: ubuntu-latest
+    env:
+      MONGRELDB_URL: http://127.0.0.1:8453
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Cache pub packages
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-dart-live-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: ${{ runner.os }}-dart-live-
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Cache mongreldb-server binary
+        uses: actions/cache@v6
+        id: server-cache
+        with:
+          path: /tmp/mongreldb-server
+          key: mongreldb-server-${{ runner.os }}-0.44.1
+
+      - name: Download mongreldb-server
+        if: steps.server-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -L -o /tmp/mongreldb-server \
+            https://github.com/visorcraft/MongrelDB/releases/download/v0.44.1/mongreldb-server-linux-x64
+          chmod +x /tmp/mongreldb-server
+
+      - name: Start mongreldb-server
+        run: |
+          rm -rf /tmp/mongreldb-data
+          /tmp/mongreldb-server /tmp/mongreldb-data --port 8453 > /tmp/mongreldb-server.log 2>&1 &
+          echo $! > /tmp/mongreldb-server.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8453/health >/dev/null 2>&1; then
+              echo "mongreldb-server is healthy"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8453/health >/dev/null || (cat /tmp/mongreldb-server.log && exit 1)
+
+      - name: Run live tests
+        env:
+          MONGRELDB_URL: http://127.0.0.1:8453
+        run: dart test
+
+      - name: Dump server log on failure
+        if: failure()
+        run: cat /tmp/mongreldb-server.log
+
+      - name: Stop mongreldb-server
+        if: always()
+        run: |
+          if [ -f /tmp/mongreldb-server.pid ]; then
+            kill "$(cat /tmp/mongreldb-server.pid)" 2>/dev/null || true
+          fi

@@ -125,7 +125,14 @@ class HttpTransport {
       throw ConnectionException('Connection broken: ${e.message}', cause: e);
     }
 
-    final responseBody = await resp.transform(utf8.decoder).join();
+    // Read raw bytes, then decode as UTF-8 with allowMalformed so that
+    // binary Arrow IPC responses (from old servers that ignore format:json)
+    // don't crash the decoder. The sql() method handles non-JSON gracefully.
+    final rawBytes = <int>[];
+    await for (final chunk in resp) {
+      rawBytes.addAll(chunk);
+    }
+    final responseBody = utf8.decode(rawBytes, allowMalformed: true);
 
     // Cap the response size at 256 MB so a runaway query or a misbehaving
     // daemon cannot exhaust memory.

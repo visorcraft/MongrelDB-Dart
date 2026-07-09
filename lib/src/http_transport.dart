@@ -127,6 +127,16 @@ class HttpTransport {
 
     final responseBody = await resp.transform(utf8.decoder).join();
 
+    // Cap the response size at 256 MB so a runaway query or a misbehaving
+    // daemon cannot exhaust memory.
+    const maxResponseBytes = 256 * 1024 * 1024; // 268435456 bytes
+    if (responseBody.length > maxResponseBytes) {
+      throw QueryException(
+        'mongreldb: response body exceeds $maxResponseBytes bytes '
+        '(${responseBody.length} bytes)',
+      );
+    }
+
     return Response(resp.statusCode, responseBody);
   }
 

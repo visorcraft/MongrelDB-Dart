@@ -324,10 +324,11 @@ class MongrelDB {
 
   /// Execute SQL against the daemon's DataFusion-backed `/sql` endpoint.
   ///
-  /// Returns parsed JSON rows when the daemon answers in JSON, otherwise an
-  /// empty list (the endpoint may emit Arrow IPC bytes for rich SELECTs).
+  /// Requests the JSON result format, so a SELECT returns a JSON array of row
+  /// objects keyed by column name. Returns parsed JSON rows for SELECTs, or an
+  /// empty list for statements like INSERT/UPDATE that produce no rows.
   Future<List<Map<String, dynamic>>> sql(String sql) async {
-    final r = await post('/sql', {'sql': sql});
+    final r = await post('/sql', {'sql': sql, 'format': 'json'});
     final body = r.body;
     if (body.isEmpty) {
       return const [];

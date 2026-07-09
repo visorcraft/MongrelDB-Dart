@@ -14,7 +14,6 @@
 library;
 
 import 'mongreldb.dart';
-import 'mongreldb_exception.dart';
 
 /// Staging buffer for a batch transaction.
 class Transaction {

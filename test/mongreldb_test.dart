@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_single_quotes
 // Live integration tests for the MongrelDB Dart client.
 //
 // These tests boot a real `mongreldb-server` binary and round-trip data

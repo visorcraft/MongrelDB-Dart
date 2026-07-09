@@ -109,6 +109,13 @@ jobs:
           MONGRELDB_URL: http://127.0.0.1:8453
         run: dart test
 
+      - name: Run examples
+        run: |
+          for ex in examples/*.dart; do
+            echo "=== Running $ex ==="
+            dart run "$ex" || { echo "FAILED: $ex"; exit 1; }
+          done
+
       - name: Dump server log on failure
         if: failure()
         run: cat /tmp/mongreldb-server.log

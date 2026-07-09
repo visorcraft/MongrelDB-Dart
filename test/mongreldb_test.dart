@@ -129,12 +129,22 @@ void main() {
       final table = 'dart_txn_${DateTime.now().microsecondsSinceEpoch}';
 
       await db.createTable(table, _columns);
+
+      // Seed two rows in a first committed transaction. delete_by_pk reads
+      // committed state, so the row to delete must be visible before the
+      // delete batch runs (the daemon cannot resolve a PK inserted earlier in
+      // the same uncommitted /kit/txn batch).
+      final seed = db.beginTransaction();
+      seed.put(table, {1: 10, 2: 'dave', 3: 50.0});
+      seed.put(table, {1: 11, 2: 'eve', 3: 75.0});
+      await seed.commit();
+      expect(seed.length, 2);
+      expect(await db.count(table), 2);
+
       final txn = db.beginTransaction();
-      txn.put(table, {1: 10, 2: 'dave', 3: 50.0});
-      txn.put(table, {1: 11, 2: 'eve', 3: 75.0});
       txn.deleteByPk(table, 10);
       await txn.commit();
-      expect(txn.length, 3);
+      expect(txn.length, 1);
       expect(await db.count(table), 1);
     });
 

@@ -146,14 +146,23 @@ class MongrelDB {
     Map<String, dynamic>? json;
     final trimmed = body.trim();
     if (trimmed.startsWith('{')) {
-      final decoded = jsonDecode(trimmed);
-      if (decoded is Map<String, dynamic>) {
-        json = decoded;
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map<String, dynamic>) {
+          json = decoded;
+        }
+      } on FormatException {
+        // Malformed JSON body - fall through to use the raw body as message.
       }
     }
 
-    final err = (json?['error'] as Map<String, dynamic>?) ?? const {};
-    final message = (err['message'] as String?) ?? body;
+    final err = json?['error'];
+    final String message;
+    if (err is Map<String, dynamic> && err['message'] is String) {
+      message = err['message'] as String;
+    } else {
+      message = body;
+    }
 
     switch (status) {
       case 401:
@@ -217,17 +226,20 @@ class MongrelDB {
 
   /// Drop a table by name.
   Future<void> dropTable(String name) async {
-    await deleteRaw('/tables/$name');
+    await deleteRaw('/tables/${_encodeSegment(name)}');
   }
 
   /// Row count for a table.
   Future<int> count(String table) async {
-    final r = await get('/tables/$table/count');
+    final r = await get('/tables/${_encodeSegment(table)}/count');
     final data = r.json();
     if (data is Map<String, dynamic>) {
-      return (data['count'] as num?)?.toInt() ?? 0;
+      final count = data['count'];
+      if (count is num) {
+        return count.toInt();
+      }
     }
-    return 0;
+    throw QueryException('mongreldb: malformed count response: ${r.body}');
   }
 
   /// Insert a row. [cells] maps column id to value (`{1: 1, 2: 'Alice'}`).
@@ -343,7 +355,7 @@ class MongrelDB {
 
   /// Descriptor for a single table.
   Future<Map<String, dynamic>> schemaFor(String table) async {
-    final r = await get('/kit/schema/$table');
+    final r = await get('/kit/schema/${_encodeSegment(table)}');
     return r.json() as Map<String, dynamic>? ?? const {};
   }
 
@@ -370,5 +382,14 @@ class MongrelDB {
       flat.add(cells[colId]);
     }
     return flat;
+  }
+
+  /// Percent-encodes a single path segment so a table name containing `/`,
+  /// `?`, `#`, or other reserved characters cannot inject extra segments.
+  static String _encodeSegment(String segment) {
+    // Uri.encodeComponent encodes everything that is not a letter, digit,
+    // or one of -_.~ -- exactly the RFC 3986 unreserved set. Critically,
+    // it encodes '/', '?', '#', and spaces.
+    return Uri.encodeComponent(segment);
   }
 }

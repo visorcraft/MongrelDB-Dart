@@ -17,8 +17,13 @@ import 'dart:io';
 import 'package:mongreldb/mongreldb.dart';
 
 const String dbUrl = 'http://127.0.0.1:8453';
-const String table = 'example_txn';
-const String txnKey = 'example-txn-key';
+// Per-run unique suffix so concurrent/CI runs never collide on a table name,
+// and the idempotency key is never reused across runs.
+final String table =
+    'example_txn_${DateTime.now().microsecondsSinceEpoch}';
+// Unique per run so a key set during an earlier run can't be replayed.
+final String txnKey =
+    'example-txn-key-${DateTime.now().microsecondsSinceEpoch}';
 
 // Column schema shared across all examples:
 //   col 1 = id (int64, primary key)
@@ -40,6 +45,7 @@ Map<int, Object?> row(int id, String name, double score) =>
 
 Future<void> main() async {
   final db = MongrelDB(dbUrl);
+  var created = false;
   try {
     // 1. Health check; bail out if the daemon is unreachable.
     if (!await db.health()) {
@@ -55,6 +61,7 @@ Future<void> main() async {
       column(2, 'name', 'varchar', primaryKey: false),
       column(3, 'score', 'float64', primaryKey: false),
     ]);
+    created = true;
     print('Created table $table (id $tableId)');
 
     // 3. Stage three puts and commit them atomically.
@@ -83,14 +90,20 @@ Future<void> main() async {
     print('Recommitted with same key (idempotent replay)');
 
     print('Total rows after idempotent retry: ${await db.count(table)}');
-
-    // 6. Cleanup.
-    await db.dropTable(table);
-    print('Dropped table $table');
   } catch (e) {
     stderr.writeln('error: $e');
     exitCode = 1;
   } finally {
+    // 6. Cleanup: ALWAYS drop the table, even on error, so CI runs never
+    //    leave an orphan table behind.
+    if (created) {
+      try {
+        await db.dropTable(table);
+        print('Dropped table $table');
+      } catch (e) {
+        stderr.writeln('dropTable cleanup failed: $e');
+      }
+    }
     db.close();
   }
 }

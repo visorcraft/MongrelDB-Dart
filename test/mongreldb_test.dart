@@ -249,17 +249,21 @@ void main() {
 
       await db.createTable(table, _columns);
 
+      // Idempotency keys must be unique per run so a stale key from an
+      // earlier run can't be replayed against this table.
+      final key = 'order-100-create-${DateTime.now().microsecondsSinceEpoch}';
+
       // First idempotent commit inserts the row.
       final txn = db.beginTransaction();
       txn.put(table, {1: 100, 2: 'order', 3: 1.0});
-      await txn.commit(idempotencyKey: 'order-100-create');
+      await txn.commit(idempotencyKey: key);
       expect(await db.count(table), 1);
 
       // A second, identical commit with the SAME key must not duplicate it.
       final txn2 = db.beginTransaction();
       txn2.put(table, {1: 100, 2: 'order', 3: 1.0});
       try {
-        await txn2.commit(idempotencyKey: 'order-100-create');
+        await txn2.commit(idempotencyKey: key);
       } catch (_) {
         // The daemon may reject the duplicate; the row count is what matters.
       }

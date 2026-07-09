@@ -16,7 +16,9 @@ import 'dart:io';
 import 'package:mongreldb/mongreldb.dart';
 
 const String dbUrl = 'http://127.0.0.1:8453';
-const String table = 'example_query';
+// Per-run unique suffix so concurrent/CI runs never collide on a table name.
+final String table =
+    'example_query_${DateTime.now().microsecondsSinceEpoch}';
 
 // Column schema shared across all examples:
 //   col 1 = id (int64, primary key)
@@ -45,6 +47,7 @@ void printResult(String label, List<Map<String, dynamic>> rows) {
 
 Future<void> main() async {
   final db = MongrelDB(dbUrl);
+  var created = false;
   try {
     // 1. Health check; bail out if the daemon is unreachable.
     if (!await db.health()) {
@@ -60,6 +63,7 @@ Future<void> main() async {
       column(2, 'name', 'varchar', primaryKey: false),
       column(3, 'score', 'float64', primaryKey: false),
     ]);
+    created = true;
     print('Created table $table (id $tableId)');
 
     // 3. Load five rows with varying scores.
@@ -94,14 +98,20 @@ Future<void> main() async {
         .where('pk', {'value': 4})
         .execute();
     printResult('pk == 4', pkRows);
-
-    // 6. Cleanup.
-    await db.dropTable(table);
-    print('Dropped table $table');
   } catch (e) {
     stderr.writeln('error: $e');
     exitCode = 1;
   } finally {
+    // 6. Cleanup: ALWAYS drop the table, even on error, so CI runs never
+    //    leave an orphan table behind.
+    if (created) {
+      try {
+        await db.dropTable(table);
+        print('Dropped table $table');
+      } catch (e) {
+        stderr.writeln('dropTable cleanup failed: $e');
+      }
+    }
     db.close();
   }
 }

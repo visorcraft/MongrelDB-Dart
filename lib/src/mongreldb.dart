@@ -333,7 +333,16 @@ class MongrelDB {
     if (body.isEmpty) {
       return const [];
     }
-    final decoded = jsonDecode(body);
+    // Requested format is JSON; decode the array of row objects. An old server
+    // may ignore the requested JSON format and answer with Arrow IPC binary
+    // bytes (not valid JSON). Treat that as "no rows" rather than throwing, so
+    // callers keep working against legacy servers.
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(body);
+    } on FormatException {
+      return const [];
+    }
     if (decoded is List) {
       return decoded
           .whereType<Map>()

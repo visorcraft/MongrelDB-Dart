@@ -71,10 +71,20 @@ Future<void> main() async {
     print('Inserted 5 rows');
 
     // 4. Range query: 60 <= score <= 90 (both inclusive). The "min"/"max"
-    //    aliases map to the server's lo/hi keys.
+    //    aliases map to the server's lo/hi keys. The "score" column is
+    //    float64, so use the range_f64 condition (plain "range" expects an
+    //    i64 bound and rejects floats); range_f64 also requires the
+    //    inclusivity flags (min_inclusive/max_inclusive -> lo_inclusive/
+    //    hi_inclusive).
     final rangeRows = await db
         .query(table)
-        .where('range', {'column': 3, 'min': 60.0, 'max': 90.0})
+        .where('range_f64', {
+          'column': 3,
+          'min': 60.0,
+          'max': 90.0,
+          'min_inclusive': true,
+          'max_inclusive': true,
+        })
         .execute();
     printResult('range [60, 90] on score', rangeRows);
 

@@ -208,9 +208,17 @@ void main() {
       await db.put(table, {1: 4, 2: 'd', 3: 100.0});
 
       // Only scores >= 80 should come back (90 and 100) - assert the count.
+      // The `amount` column is float64, so use `range_f64` (plain `range`
+      // expects an i64 bound and rejects floats). range_f64 also requires the
+      // inclusivity flags (min_inclusive/max_inclusive -> lo_inclusive/
+      // hi_inclusive).
       final rows = await db
           .query(table)
-          .where('range', {'column': 3, 'min': 80.0})
+          .where('range_f64', {
+            'column': 3,
+            'min': 80.0,
+            'min_inclusive': true,
+          })
           .execute();
       expect(rows.length, 2);
     });

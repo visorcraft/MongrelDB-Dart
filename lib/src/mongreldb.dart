@@ -56,15 +56,15 @@ class MongrelDB {
     this.username,
     this.password,
     HttpTransport? transport,
-  }) : transport = transport ?? HttpTransport(),
-       _defaultHeaders = {
-         'Accept': 'application/json',
-         if (token != null)
-           'Authorization': 'Bearer $token'
-         else if (username != null)
-           'Authorization':
-               'Basic ${base64Encode(utf8.encode('$username:${password ?? ''}'))}',
-       };
+  })  : transport = transport ?? HttpTransport(),
+        _defaultHeaders = {
+          'Accept': 'application/json',
+          if (token != null)
+            'Authorization': 'Bearer $token'
+          else if (username != null)
+            'Authorization':
+                'Basic ${base64Encode(utf8.encode('$username:${password ?? ''}'))}',
+        };
 
   // -- HTTP helpers ----------------------------------------------------------
 
@@ -75,12 +75,13 @@ class MongrelDB {
     String path,
     dynamic data, {
     Map<String, String>? headers,
-  }) => _request(
-    'POST',
-    path,
-    headers ?? {},
-    body: data == null ? null : _encodeJson(data),
-  );
+  }) =>
+      _request(
+        'POST',
+        path,
+        headers ?? {},
+        body: data == null ? null : _encodeJson(data),
+      );
 
   Future<Response> deleteRaw(String path, {Map<String, String>? headers}) =>
       _request('DELETE', path, headers ?? const {});
@@ -121,8 +122,7 @@ class MongrelDB {
     String? body,
   }) async {
     final merged = <String, String>{..._defaultHeaders, ...headers};
-    final full =
-        '${url.replaceAll(RegExp(r'/+$'), '')}'
+    final full = '${url.replaceAll(RegExp(r'/+$'), '')}'
         '/${path.replaceAll(RegExp(r'^/+'), '')}';
 
     final Response response;

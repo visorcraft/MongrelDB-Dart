@@ -24,16 +24,15 @@ Future<bool> _serverReachable() async {
   if (_reachableCache != null) return _reachableCache!;
   try {
     final client = HttpClient();
-    final req = await client
-        .getUrl(_serverUri.replace(path: '/health'))
-        .timeout(
-          const Duration(seconds: 2),
-          onTimeout: () => throw TimeoutException('health check timed out'),
-        );
+    final req =
+        await client.getUrl(_serverUri.replace(path: '/health')).timeout(
+              const Duration(seconds: 2),
+              onTimeout: () => throw TimeoutException('health check timed out'),
+            );
     final resp = await req.close().timeout(
-      const Duration(seconds: 2),
-      onTimeout: () => throw TimeoutException('health read timed out'),
-    );
+          const Duration(seconds: 2),
+          onTimeout: () => throw TimeoutException('health read timed out'),
+        );
     await resp.drain<void>();
     client.close(force: true);
     _reachableCache = resp.statusCode == 200;
@@ -225,16 +224,13 @@ void main() {
       // The `amount` column is float64, so use `range_f64` (plain `range`
       // expects an i64 bound and rejects floats). range_f64 requires both
       // lo/hi bounds and the inclusivity flags.
-      final rows = await db
-          .query(table)
-          .where('range_f64', {
-            'column': 3,
-            'min': 80.0,
-            'max': 200.0,
-            'min_inclusive': true,
-            'max_inclusive': true,
-          })
-          .execute();
+      final rows = await db.query(table).where('range_f64', {
+        'column': 3,
+        'min': 80.0,
+        'max': 200.0,
+        'min_inclusive': true,
+        'max_inclusive': true,
+      }).execute();
       expect(rows.length, 2);
       // Only rows with id 3 (amount 90) and 4 (amount 100) qualify. Confirm
       // their exact PK values via SQL JSON mode (rows keyed by column name).

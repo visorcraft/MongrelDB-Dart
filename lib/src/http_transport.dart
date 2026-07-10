@@ -47,8 +47,8 @@ class HttpTransport {
   final Duration timeout;
 
   HttpTransport({Duration? idleTimeout, Duration? timeout})
-    : idleTimeout = idleTimeout ?? const Duration(seconds: 30),
-      timeout = timeout ?? const Duration(seconds: 60);
+      : idleTimeout = idleTimeout ?? const Duration(seconds: 30),
+        timeout = timeout ?? const Duration(seconds: 60);
 
   /// Lazily build (and configure) the [HttpClient].
   HttpClient get _http {
@@ -116,11 +116,11 @@ class HttpTransport {
     HttpClientResponse resp;
     try {
       resp = await req.close().timeout(
-        timeout,
-        onTimeout: () => throw ConnectionException(
-          'Timed out waiting for MongrelDB after $timeout',
-        ),
-      );
+            timeout,
+            onTimeout: () => throw ConnectionException(
+              'Timed out waiting for MongrelDB after $timeout',
+            ),
+          );
     } on SocketException catch (e) {
       throw ConnectionException('Connection broken: ${e.message}', cause: e);
     }

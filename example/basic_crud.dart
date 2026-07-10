@@ -47,6 +47,43 @@ Future<void> main() async {
     await db.put('demo', {1: 2, 2: 'second', 3: 20.0});
     print('count: ${await db.count('demo')}');
 
+    // Column-level constraints: enum_variants fixes the allowed values and
+    // default_value fills the cell when a row omits it. The daemon rejects
+    // any insert whose value is outside the variant set with a 4xx error.
+    await db.createTable('demo_enum', [
+      {
+        'id': 1,
+        'name': 'id',
+        'ty': 'int64',
+        'primary_key': true,
+        'nullable': false,
+      },
+      {
+        'id': 2,
+        'name': 'status',
+        'ty': 'enum',
+        // Order is preserved; the first variant is used when default_value
+        // is omitted, so passing it explicitly is the recommended form.
+        'enum_variants': <String>['new', 'active', 'archived'],
+        'default_value': 'new',
+      },
+    ]);
+
+    // Valid insert: 'new' is in enum_variants, so the row is accepted and
+    // the default_value field is irrelevant here because the caller sets
+    // column 2 explicitly.
+    await db.put('demo_enum', {1: 1, 2: 'new'});
+    print('demo_enum count: ${await db.count('demo_enum')}');
+
+    // Invalid insert: 'pending' is NOT in enum_variants. The daemon returns
+    // a constraint error (HTTP 409 → ConstraintException). We catch and
+    // print it so the run still exits cleanly.
+    try {
+      await db.put('demo_enum', {1: 2, 2: 'pending'});
+    } on MongrelDBException catch (e) {
+      print('expected rejection: ${e.runtimeType}: ${e.message}');
+    }
+
     // Upsert: change the second row.
     await db.upsert(
       'demo',

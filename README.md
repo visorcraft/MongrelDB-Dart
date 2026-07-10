@@ -54,11 +54,22 @@ Future<void> main() async {
   final db = MongrelDB('http://127.0.0.1:8453');
 
   try {
-    // Create a table.
+    // Create a table. Column specs are plain maps; enum_variants pins a
+    // column to a fixed string set and default_value supplies the value
+    // when the row omits the cell. Check constraints (regex / range) are
+    // declared under a 'constraints' key on the request body — see the
+    // Kit API docs for the full payload.
     await db.createTable('orders', [
       {'id': 1, 'name': 'id',       'ty': 'int64',   'primary_key': true,  'nullable': false},
       {'id': 2, 'name': 'customer', 'ty': 'varchar', 'primary_key': false, 'nullable': false},
       {'id': 3, 'name': 'amount',   'ty': 'float64', 'primary_key': false, 'nullable': false},
+      {
+        'id': 4,
+        'name': 'status',
+        'ty': 'enum',
+        'enum_variants': <String>['pending', 'paid', 'refunded'],
+        'default_value': 'pending',
+      },
     ]);
 
     // Insert rows.

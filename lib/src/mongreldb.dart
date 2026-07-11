@@ -248,6 +248,12 @@ class MongrelDB {
       throw QueryException(
           'mongreldb: malformed history retention response: ${response.body}');
     }
+    if (decoded.length != 2 ||
+        !decoded.containsKey('history_retention_epochs') ||
+        !decoded.containsKey('earliest_retained_epoch')) {
+      throw QueryException(
+          'mongreldb: malformed history retention response: ${response.body}');
+    }
     final retention = decoded['history_retention_epochs'];
     final earliest = decoded['earliest_retained_epoch'];
     if (retention is! num || earliest is! num) {

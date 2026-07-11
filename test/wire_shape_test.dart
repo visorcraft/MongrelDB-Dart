@@ -323,5 +323,15 @@ void main() {
 
       expect(db.historyRetentionEpochs(), throwsA(isA<QueryException>()));
     });
+
+    test('response with extra keys throws QueryException', () async {
+      final fake = _RecordingTransport(
+        body: '{"history_retention_epochs": 1, "earliest_retained_epoch": 0, '
+            '"extra": true}',
+      );
+      final db = MongrelDB('http://test.invalid', transport: fake);
+
+      expect(db.historyRetentionEpochs(), throwsA(isA<QueryException>()));
+    });
   });
 }

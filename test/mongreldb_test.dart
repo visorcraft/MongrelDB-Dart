@@ -307,7 +307,6 @@ void main() {
       await db.setHistoryRetentionEpochs(10000);
       final baseEpoch = await db.earliestRetainedEpoch();
       expect(await db.historyRetentionEpochs(), 10000);
-      expect(baseEpoch, greaterThan(0));
 
       final table = 'dart_retention_${DateTime.now().microsecondsSinceEpoch}';
       await db.createTable(table, _columns);
@@ -318,20 +317,21 @@ void main() {
         updateCells: {2: 'second', 3: 2.0},
       );
 
-      // Each committed operation advances the visible epoch by one, so the
-      // first insert is visible at baseEpoch + 2 and the update at +3. Probe
-      // a small range so the assertion survives minor epoch-alignment shifts.
+      // earliestRetainedEpoch is the floor, not the current epoch. The writes
+      // above advance the current epoch, so probing a small range above the
+      // floor should find both the original and updated values.
       String? firstLabel;
       String? laterLabel;
-      for (var offset = 1; offset <= 5; offset++) {
+      for (var offset = 0; offset <= 5; offset++) {
         final rows = await db.sql(
           'SELECT label FROM $table AS OF EPOCH ${baseEpoch + offset} '
           'WHERE id = 1',
         );
         if (rows.isNotEmpty) {
           final label = rows.first['label'] as String?;
-          firstLabel ??= label;
-          if (firstLabel != null && label != firstLabel) {
+          if (firstLabel == null) {
+            firstLabel = label;
+          } else if (label != firstLabel) {
             laterLabel = label;
             break;
           }
@@ -380,6 +380,16 @@ void main() {
       final newEarliest = await db.earliestRetainedEpoch();
       expect(newEarliest, greaterThan(baseEpoch));
 
+      expect(
+        db.sql(
+          'SELECT label FROM $table AS OF EPOCH ${baseEpoch + 2} WHERE id = 1',
+        ),
+        throwsA(isA<MongrelDBException>()),
+      );
+
+      // Re-expanding the window cannot restore history already dropped.
+      await db.setHistoryRetentionEpochs(100);
+      expect(await db.earliestRetainedEpoch(), newEarliest);
       expect(
         db.sql(
           'SELECT label FROM $table AS OF EPOCH ${baseEpoch + 2} WHERE id = 1',

@@ -56,9 +56,8 @@ Future<void> main() async {
   try {
     // Create a table. Column specs are plain maps; enum_variants pins a
     // column to a fixed string set and default_value supplies the value
-    // when the row omits the cell. Check constraints (regex / range) are
-    // declared under a 'constraints' key on the request body — see the
-    // Kit API docs for the full payload.
+    // when the row omits the cell. Table checks use the optional constraints
+    // argument.
     await db.createTable('orders', [
       {'id': 1, 'name': 'id',       'ty': 'int64',   'primary_key': true,  'nullable': false},
       {'id': 2, 'name': 'customer', 'ty': 'varchar', 'primary_key': false, 'nullable': false},
@@ -70,7 +69,9 @@ Future<void> main() async {
         'enum_variants': <String>['pending', 'paid', 'refunded'],
         'default_value': 'pending',
       },
-    ]);
+    ], constraints: {
+      'checks': [{'id': 1, 'name': 'amount_nonneg', 'expr': {'Ge': [{'Col': 3}, {'Lit': {'Float64': 0.0}}]}}],
+    });
 
     // Insert rows.
     await db.put('orders', {1: 1, 2: 'Alice', 3: 99.50});
@@ -221,7 +222,7 @@ try {
 |---|---|
 | `health()` | Check daemon health |
 | `tableNames()` | List table names |
-| `createTable(name, columns)` | Create a table, returns table id |
+| `createTable(name, columns, {constraints})` | Create a table, returns table id; optional native constraints object is forwarded |
 | `dropTable(name)` | Drop a table |
 | `count(table)` | Row count |
 | `put(table, cells, {idempotencyKey})` | Insert a row |

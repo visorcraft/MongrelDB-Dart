@@ -67,7 +67,22 @@ void main() {
             'enum_variants': <String>['a', 'b', 'c'],
             'default_value': 'a',
           },
-        ]);
+        ], constraints: {
+          'checks': [
+            {
+              'id': 1,
+              'name': 'status_known',
+              'expr': {
+                'Eq': [
+                  {'Col': 2},
+                  {
+                    'Lit': {'Bytes': 'a'}
+                  },
+                ],
+              },
+            },
+          ],
+        });
 
         // Request line + URL are stable.
         expect(fake.lastMethod, 'POST');
@@ -91,12 +106,18 @@ void main() {
         // with their original values intact.
         expect(status['enum_variants'], <String>['a', 'b', 'c']);
         expect(status['default_value'], 'a');
+        expect(
+          ((decoded['constraints'] as Map<String, dynamic>)['checks'] as List)
+              .first['name'],
+          'status_known',
+        );
 
         // Belt-and-braces: assert the keys appear in the raw JSON text in
         // the exact wire format, so a regression that re-encodes the map
         // (e.g. through a stripping layer) still fails this test.
         expect(body, contains('"enum_variants":["a","b","c"]'));
         expect(body, contains('"default_value":"a"'));
+        expect(body, contains('"constraints":{"checks":['));
       },
     );
 

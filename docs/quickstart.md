@@ -86,9 +86,13 @@ unknown keys are forwarded and rejected by the daemon.
 
 Check constraints (regex, range, equality) live on the table-level
 `constraints` key alongside `uniques` and `foreign_keys`; they are sent as
-part of the Kit create-table request but the Dart client's `createTable`
-helper takes only the `columns` list, so callers post the constraints
-payload through `db.post('/kit/create_table', ...)` directly.
+the optional named `constraints` argument to `createTable`.
+
+```dart
+await db.createTable('scores', columns, constraints: {
+  'checks': [{'id': 1, 'name': 'score_nonneg', 'expr': {'Ge': [{'Col': 3}, {'Lit': {'Float64': 0.0}}]}}],
+});
+```
 
 ## Run a query
 

@@ -57,6 +57,11 @@ await db.createTable('orders', [
   {'id': 1, 'name': 'id',       'ty': 'int64',   'primary_key': true,  'nullable': false},
   {'id': 2, 'name': 'customer', 'ty': 'varchar', 'primary_key': false, 'nullable': false},
   {'id': 3, 'name': 'amount',   'ty': 'float64', 'primary_key': false, 'nullable': false},
+  {'id': 4, 'name': 'status',   'ty': 'varchar', 'primary_key': false, 'nullable': false, 'default_value': 'draft'},
+  {'id': 5, 'name': 'score',    'ty': 'int64',   'primary_key': false, 'nullable': false, 'default_value': 7},
+  {'id': 6, 'name': 'active',   'ty': 'bool',    'primary_key': false, 'nullable': false, 'default_value': true},
+  {'id': 7, 'name': 'notes',    'ty': 'varchar', 'primary_key': false, 'nullable': true,  'default_value': null},
+  {'id': 8, 'name': 'created',  'ty': 'text',    'primary_key': false, 'nullable': false, 'default_expr': 'now'},
 ]);
 
 await db.put('orders', {1: 1, 2: 'Alice', 3: 99.50});
@@ -80,8 +85,8 @@ unknown keys are forwarded and rejected by the daemon.
 | `primary_key` | `bool` | Mark this column as the table's primary key. |
 | `nullable` | `bool` | Allow `NULL` cells (default: false). |
 | `enum_variants` | `List<String>` | When `ty == 'enum'`, the allowed string values. Required for enums; rejected if empty. |
-| `default_value` | JSON scalar | Static default used when a row omits the cell. |
-| `default_expr` | `String` | Dynamic default: `'now'` or `'uuid'`. |
+| `default_value` | JSON scalar | Static default used when a row omits the cell. Can be a string, integer, boolean, or explicit `null`. |
+| `default_expr` | `String` | Dynamic default: `'now'` or `'uuid'`. This is a separate key; do not mix it with `default_value`. |
 | `auto_increment` | `bool` | Assign monotonic ids on insert. |
 | `encrypted` / `encrypted_indexable` | `bool` | Page-level AES-GCM encryption for at-rest columns. |
 
@@ -102,6 +107,30 @@ final rows = await db.query('orders')
     .where('pk', {'value': 1})
     .execute();
 ```
+
+## History retention
+
+MongrelDB keeps a rolling window of prior commit epochs. You can read old
+versions of a table with `AS OF EPOCH` SQL, as long as the epoch is still
+inside the configured window.
+
+```dart
+// Keep the last 1000 commit epochs readable.
+await db.setHistoryRetentionEpochs(1000);
+
+print(await db.historyRetentionEpochs()); // 1000
+print(await db.earliestRetainedEpoch());  // oldest readable epoch
+
+// Read the table as it was at an earlier epoch.
+final oldRows = await db.sql(
+  'SELECT * FROM orders AS OF EPOCH 42 WHERE id = 1',
+);
+```
+
+Raising the window only protects future history; epochs that already fell out
+of the previous window cannot be restored. Lowering the window moves the
+floor forward, so older `AS OF EPOCH` queries will fail once their epoch is
+no longer retained.
 
 ## Next steps
 

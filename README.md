@@ -5,7 +5,7 @@
 <h1 align="center">MongrelDB Dart Client</h1>
 
 <p align="center">
-  <b>Pure Dart client for MongrelDB, embedded and server database with SQL, vector search, full-text search, and AI-native retrieval.</b>
+  <b>Pure Dart client for MongrelDB, embedded and server database with SQL, vector search, full-text search, history retention, and AI-native retrieval.</b>
 </p>
 
 <p align="center">
@@ -20,8 +20,6 @@
 |---|---|---|
 | Dart client | `mongreldb` | `dart pub add mongreldb` |
 
-History retention: `historyRetention()` and `setHistoryRetentionEpochs(n)`.
-
 ## Requirements
 
 - **Dart 3.0 or newer** (Flutter 3.10+ supported, no Flutter-specific deps)
@@ -35,6 +33,7 @@ History retention: `historyRetention()` and `setHistoryRetentionEpochs(n)`.
 - **Idempotent batch transactions**, all operations staged locally and committed atomically, with the engine enforcing unique, foreign key, and check constraints at commit time. Idempotency keys return the original response on duplicate commits, even after a crash.
 - **Full SQL access** through the DataFusion-backed `/sql` endpoint: recursive CTEs, window functions, `CREATE TABLE AS SELECT`, materialized views, multi-statement execution, and the `mongreldb_fts_rank` relevance-scoring UDF.
 - **Schema management**: typed table creation, full schema catalog, and per-table descriptors.
+- **History retention**: configure how many prior commit epochs remain readable through `AS OF EPOCH` time-travel SQL, and query the current window.
 - **Maintenance**: compaction (all tables or per-table).
 - **Pluggable HTTP transport**: pooled `dart:io HttpClient` by default, and an injectable `HttpTransport` for custom adapters.
 - **Typed exception hierarchy**: `AuthException` (401/403), `NotFoundException` (404), `ConstraintException` (409, with error code and op index), `ConnectionException` (network), and `QueryException` (everything else).
@@ -236,6 +235,10 @@ try {
 | `schema()` | Full schema catalog |
 | `schemaFor(table)` | Single table schema |
 | `compact()` | Compact all tables |
+| `historyRetention()` | Full retention state as `{history_retention_epochs, earliest_retained_epoch}` |
+| `historyRetentionEpochs()` | Current number of retained commit epochs |
+| `earliestRetainedEpoch()` | Oldest epoch still readable via `AS OF EPOCH` |
+| `setHistoryRetentionEpochs(epochs)` | Set the retention window |
 | `beginTransaction()` | Start a batch |
 | `close()` | Release pooled HTTP connections |
 

@@ -214,15 +214,50 @@ class MongrelDB {
     return const [];
   }
 
-  Future<Map<String, int>> historyRetention() async {
-    final data = (await get('/history/retention')).json() as Map<String, dynamic>;
-    return data.map((k, v) => MapEntry(k, (v as num).toInt()));
+  /// Raw history retention state.
+  ///
+  /// Returns the server's `{"history_retention_epochs": <u64>,
+  /// "earliest_retained_epoch": <u64>}` response as a typed map.
+  Future<Map<String, int>> historyRetention() async => _historyRetention();
+
+  /// Current `history_retention_epochs` value.
+  Future<int> historyRetentionEpochs() async {
+    final data = await _historyRetention();
+    return data['history_retention_epochs']!;
   }
 
-  Future<Map<String, int>> setHistoryRetentionEpochs(int epochs) async {
-    final data = (await putRaw('/history/retention',
-        {'history_retention_epochs': epochs})).json() as Map<String, dynamic>;
-    return data.map((k, v) => MapEntry(k, (v as num).toInt()));
+  /// Earliest epoch that is still readable through `AS OF EPOCH` queries.
+  Future<int> earliestRetainedEpoch() async {
+    final data = await _historyRetention();
+    return data['earliest_retained_epoch']!;
+  }
+
+  /// Set `history_retention_epochs` and return the new value.
+  Future<int> setHistoryRetentionEpochs(int epochs) async {
+    final data = await _historyRetention(epochs: epochs);
+    return data['history_retention_epochs']!;
+  }
+
+  Future<Map<String, int>> _historyRetention({int? epochs}) async {
+    final response = epochs == null
+        ? await get('/history/retention')
+        : await putRaw('/history/retention',
+            <String, dynamic>{'history_retention_epochs': epochs});
+    final decoded = response.json();
+    if (decoded is! Map<String, dynamic>) {
+      throw QueryException(
+          'mongreldb: malformed history retention response: ${response.body}');
+    }
+    final retention = decoded['history_retention_epochs'];
+    final earliest = decoded['earliest_retained_epoch'];
+    if (retention is! num || earliest is! num) {
+      throw QueryException(
+          'mongreldb: malformed history retention response: ${response.body}');
+    }
+    return <String, int>{
+      'history_retention_epochs': retention.toInt(),
+      'earliest_retained_epoch': earliest.toInt(),
+    };
   }
 
   /// Create a table. [columns] is a list of column descriptors.

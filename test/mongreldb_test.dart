@@ -285,5 +285,107 @@ void main() {
       }
       expect(await db.count(table), 1);
     });
+
+    test('retention window keeps older epochs readable via AS OF EPOCH',
+        () async {
+      if (!await _serverReachable()) {
+        print('skip: MONGRELDB_URL not reachable');
+        return;
+      }
+      final db = await _connect();
+      addTearDown(db.close);
+
+      // Skip if the connected daemon predates the /history/retention endpoint.
+      try {
+        await db.historyRetentionEpochs();
+      } on NotFoundException {
+        print('skip: daemon does not expose /history/retention');
+        return;
+      }
+
+      // Open a wide window before any writes.
+      await db.setHistoryRetentionEpochs(10000);
+      final baseEpoch = await db.earliestRetainedEpoch();
+      expect(await db.historyRetentionEpochs(), 10000);
+      expect(baseEpoch, greaterThan(0));
+
+      final table = 'dart_retention_${DateTime.now().microsecondsSinceEpoch}';
+      await db.createTable(table, _columns);
+      await db.put(table, {1: 1, 2: 'first', 3: 1.0});
+      await db.upsert(
+        table,
+        {1: 1, 2: 'first', 3: 1.0},
+        updateCells: {2: 'second', 3: 2.0},
+      );
+
+      // Each committed operation advances the visible epoch by one, so the
+      // first insert is visible at baseEpoch + 2 and the update at +3. Probe
+      // a small range so the assertion survives minor epoch-alignment shifts.
+      String? firstLabel;
+      String? laterLabel;
+      for (var offset = 1; offset <= 5; offset++) {
+        final rows = await db.sql(
+          'SELECT label FROM $table AS OF EPOCH ${baseEpoch + offset} '
+          'WHERE id = 1',
+        );
+        if (rows.isNotEmpty) {
+          final label = rows.first['label'] as String?;
+          firstLabel ??= label;
+          if (firstLabel != null && label != firstLabel) {
+            laterLabel = label;
+            break;
+          }
+        }
+      }
+      expect(firstLabel, 'first');
+      expect(laterLabel, 'second');
+    });
+
+    test('lowering retention advances earliest and drops old epochs', () async {
+      if (!await _serverReachable()) {
+        print('skip: MONGRELDB_URL not reachable');
+        return;
+      }
+      final db = await _connect();
+      addTearDown(db.close);
+
+      // Skip if the connected daemon predates the /history/retention endpoint.
+      try {
+        await db.historyRetentionEpochs();
+      } on NotFoundException {
+        print('skip: daemon does not expose /history/retention');
+        return;
+      }
+
+      // Start with a window large enough to retain the first write.
+      await db.setHistoryRetentionEpochs(10);
+      final baseEpoch = await db.earliestRetainedEpoch();
+
+      final table =
+          'dart_retention_drop_${DateTime.now().microsecondsSinceEpoch}';
+      await db.createTable(table, _columns);
+      await db.put(table, {1: 1, 2: 'old', 3: 1.0});
+
+      // Tighten the window and advance the current epoch past the old floor.
+      await db.setHistoryRetentionEpochs(1);
+      for (var i = 0; i < 5; i++) {
+        await db.upsert(
+          table,
+          {1: 1, 2: 'old', 3: 1.0},
+          updateCells: {2: 'new$i', 3: i.toDouble()},
+        );
+      }
+
+      // The floor must have moved forward; history before it is gone.
+      final newEarliest = await db.earliestRetainedEpoch();
+      expect(newEarliest, greaterThan(baseEpoch));
+
+      expect(
+        db.sql(
+          'SELECT label FROM $table AS OF EPOCH ${baseEpoch + 2} WHERE id = 1',
+        ),
+        throwsA(isA<MongrelDBException>()),
+      );
+    });
   });
 }

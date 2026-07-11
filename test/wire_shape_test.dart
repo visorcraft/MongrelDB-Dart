@@ -18,14 +18,18 @@ import 'package:mongreldb/mongreldb.dart';
 import 'package:test/test.dart';
 
 /// A [HttpTransport] that records the most recent request and replies with
-/// a canned `200 OK` payload. Subclassing (rather than mocking) avoids
-/// pulling in a mock framework and lets us reuse the parent's [Response]
-/// type unchanged.
+/// a canned payload. Subclassing (rather than mocking) avoids pulling in a
+/// mock framework and lets us reuse the parent's [Response] type unchanged.
 class _RecordingTransport extends HttpTransport {
   String? lastMethod;
   String? lastUrl;
   String? lastBody;
   Map<String, String> lastHeaders = <String, String>{};
+
+  final int status;
+  final String body;
+
+  _RecordingTransport({this.status = 200, this.body = '{"table_id": 42}'});
 
   @override
   Future<Response> request(
@@ -38,8 +42,7 @@ class _RecordingTransport extends HttpTransport {
     lastUrl = url;
     lastBody = body;
     lastHeaders = Map<String, String>.from(headers);
-    // createTable() reads 'table_id' from the response; return a stable id.
-    return Response(200, '{"table_id": 42}');
+    return Response(status, this.body);
   }
 }
 
@@ -168,5 +171,157 @@ void main() {
         expect(columns[1]['ty'], 'varchar');
       },
     );
+
+    test(
+      'preserves the full static-default matrix with correct JSON types',
+      () async {
+        final fake = _RecordingTransport();
+        final db = MongrelDB('http://test.invalid', transport: fake);
+
+        await db.createTable('defaults_matrix', [
+          {
+            'id': 1,
+            'name': 'id',
+            'ty': 'int64',
+            'primary_key': true,
+            'nullable': false,
+          },
+          {
+            'id': 2,
+            'name': 'status',
+            'ty': 'text',
+            'default_value': 'draft',
+          },
+          {
+            'id': 3,
+            'name': 'score',
+            'ty': 'int64',
+            'default_value': 7,
+          },
+          {
+            'id': 4,
+            'name': 'active',
+            'ty': 'bool',
+            'default_value': true,
+          },
+          {
+            'id': 5,
+            'name': 'optional',
+            'ty': 'text',
+            'default_value': null,
+          },
+          {
+            'id': 6,
+            'name': 'created',
+            'ty': 'text',
+            'default_value': 'now',
+          },
+          {
+            'id': 7,
+            'name': 'updated',
+            'ty': 'text',
+            'default_expr': 'now',
+          },
+        ]);
+
+        expect(fake.lastMethod, 'POST');
+        expect(fake.lastUrl, endsWith('/kit/create_table'));
+
+        final body = fake.lastBody;
+        expect(body, isNotNull);
+        final decoded = jsonDecode(body!) as Map<String, dynamic>;
+        final columns =
+            (decoded['columns'] as List).cast<Map<String, dynamic>>();
+        expect(columns, hasLength(7));
+
+        // Literal scalar defaults must preserve their JSON types.
+        expect(columns[1]['default_value'], 'draft');
+        expect(columns[2]['default_value'], 7);
+        expect(columns[3]['default_value'], true);
+        expect(columns[4]['default_value'], isNull);
+        expect(columns[5]['default_value'], 'now');
+
+        // default_expr is a separate key and must not be folded into default_value.
+        expect(columns[6]['default_expr'], 'now');
+        expect(columns[6].containsKey('default_value'), isFalse);
+
+        // Decode again to confirm raw JSON types, not just Dart runtime types.
+        final redecoded = jsonDecode(body) as Map<String, dynamic>;
+        final recols =
+            (redecoded['columns'] as List).cast<Map<String, dynamic>>();
+        expect(recols[2]['default_value'], isA<int>());
+        expect(recols[3]['default_value'], isA<bool>());
+        expect(recols[4].containsKey('default_value'), isTrue);
+        expect(recols[4]['default_value'], isNull);
+      },
+    );
+  });
+
+  group('history retention wire shape', () {
+    const retentionResponse =
+        '{"history_retention_epochs": 100, "earliest_retained_epoch": 5}';
+
+    test('GET uses the exact path and extracts both keys', () async {
+      final fake = _RecordingTransport(body: retentionResponse);
+      final db = MongrelDB('http://test.invalid', transport: fake);
+
+      expect(await db.historyRetentionEpochs(), 100);
+      expect(fake.lastMethod, 'GET');
+      expect(fake.lastUrl, endsWith('/history/retention'));
+      expect(fake.lastBody, isNull);
+    });
+
+    test('earliestRetainedEpoch reads the matching key', () async {
+      final fake = _RecordingTransport(body: retentionResponse);
+      final db = MongrelDB('http://test.invalid', transport: fake);
+
+      expect(await db.earliestRetainedEpoch(), 5);
+      expect(fake.lastMethod, 'GET');
+      expect(fake.lastUrl, endsWith('/history/retention'));
+    });
+
+    test('PUT sends the exact body key and returns the new value', () async {
+      final fake = _RecordingTransport(body: retentionResponse);
+      final db = MongrelDB('http://test.invalid', transport: fake);
+
+      expect(await db.setHistoryRetentionEpochs(250), 100);
+      expect(fake.lastMethod, 'PUT');
+      expect(fake.lastUrl, endsWith('/history/retention'));
+
+      final body = fake.lastBody;
+      expect(body, isNotNull);
+      final decoded = jsonDecode(body!) as Map<String, dynamic>;
+      expect(decoded.keys, equals(<String>['history_retention_epochs']));
+      expect(decoded['history_retention_epochs'], 250);
+    });
+
+    test('historyRetention returns the full typed map', () async {
+      final fake = _RecordingTransport(body: retentionResponse);
+      final db = MongrelDB('http://test.invalid', transport: fake);
+
+      final retention = await db.historyRetention();
+      expect(retention, <String, int>{
+        'history_retention_epochs': 100,
+        'earliest_retained_epoch': 5,
+      });
+    });
+
+    test('non-2xx response propagates as AuthException', () async {
+      final fake = _RecordingTransport(
+        status: 403,
+        body: '{"error": {"message": "forbidden"}}',
+      );
+      final db = MongrelDB('http://test.invalid', transport: fake);
+
+      expect(db.historyRetentionEpochs(), throwsA(isA<AuthException>()));
+    });
+
+    test('malformed response without required keys throws QueryException',
+        () async {
+      final fake = _RecordingTransport(body: '{"unexpected": 1}');
+      final db = MongrelDB('http://test.invalid', transport: fake);
+
+      expect(db.historyRetentionEpochs(), throwsA(isA<QueryException>()));
+    });
   });
 }

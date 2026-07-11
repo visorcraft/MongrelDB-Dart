@@ -167,6 +167,10 @@ class MongrelDB {
       message = body;
     }
 
+    if (message.startsWith('not found:')) {
+      throw NotFoundException(message);
+    }
+
     switch (status) {
       case 401:
       case 403:

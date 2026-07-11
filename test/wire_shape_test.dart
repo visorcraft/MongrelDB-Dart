@@ -45,6 +45,12 @@ class _RecordingTransport extends HttpTransport {
 
 void main() {
   group('createTable wire shape', () {
+    test('preserves every static JSON scalar including literal now', () {
+      for (final value in <Object?>['text', 3, true, null, 'now']) {
+        final wire = jsonEncode({'default_value': value});
+        expect(jsonDecode(wire)['default_value'], value);
+      }
+    });
     test(
       'sends enum_variants and default_value verbatim in the JSON body',
       () async {

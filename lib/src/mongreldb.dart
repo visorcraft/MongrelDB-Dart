@@ -83,6 +83,9 @@ class MongrelDB {
         body: data == null ? null : _encodeJson(data),
       );
 
+  Future<Response> putRaw(String path, dynamic data) =>
+      _request('PUT', path, {}, body: _encodeJson(data));
+
   Future<Response> deleteRaw(String path, {Map<String, String>? headers}) =>
       _request('DELETE', path, headers ?? const {});
 
@@ -205,6 +208,17 @@ class MongrelDB {
       return data.cast<String>();
     }
     return const [];
+  }
+
+  Future<Map<String, int>> historyRetention() async {
+    final data = (await get('/history/retention')).json() as Map<String, dynamic>;
+    return data.map((k, v) => MapEntry(k, (v as num).toInt()));
+  }
+
+  Future<Map<String, int>> setHistoryRetentionEpochs(int epochs) async {
+    final data = (await putRaw('/history/retention',
+        {'history_retention_epochs': epochs})).json() as Map<String, dynamic>;
+    return data.map((k, v) => MapEntry(k, (v as num).toInt()));
   }
 
   /// Create a table. [columns] is a list of column descriptors.

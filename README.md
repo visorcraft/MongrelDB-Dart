@@ -20,6 +20,8 @@
 |---|---|---|
 | Dart client | `mongreldb` | `dart pub add mongreldb` |
 
+History retention: `historyRetention()` and `setHistoryRetentionEpochs(n)`.
+
 ## Requirements
 
 - **Dart 3.0 or newer** (Flutter 3.10+ supported, no Flutter-specific deps)

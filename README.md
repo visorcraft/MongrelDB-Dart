@@ -55,7 +55,7 @@ Future<void> main() async {
 
   try {
     // Create a table. Column specs are plain maps; enum_variants pins a
-    // column to a fixed string set and default_value supplies the value
+    // column to a fixed string set and scalar default_value supplies the value
     // when the row omits the cell. Table checks use the optional constraints
     // argument.
     await db.createTable('orders', [
@@ -67,7 +67,7 @@ Future<void> main() async {
         'name': 'status',
         'ty': 'enum',
         'enum_variants': <String>['pending', 'paid', 'refunded'],
-        'default_value': 'pending',
+        'default_value': 'pending', // or default_expr: 'now' / 'uuid'
       },
     ], constraints: {
       'checks': [{'id': 1, 'name': 'amount_nonneg', 'expr': {'Ge': [{'Col': 3}, {'Lit': {'Float64': 0.0}}]}}],

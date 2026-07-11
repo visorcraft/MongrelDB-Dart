@@ -80,7 +80,8 @@ unknown keys are forwarded and rejected by the daemon.
 | `primary_key` | `bool` | Mark this column as the table's primary key. |
 | `nullable` | `bool` | Allow `NULL` cells (default: false). |
 | `enum_variants` | `List<String>` | When `ty == 'enum'`, the allowed string values. Required for enums; rejected if empty. |
-| `default_value` | `String` | Default used when a row omits the cell. The server also accepts `default_expr` (e.g. `'now'`, `'uuid'`); `default_value` is the legacy alias. |
+| `default_value` | JSON scalar | Static default used when a row omits the cell. |
+| `default_expr` | `String` | Dynamic default: `'now'` or `'uuid'`. |
 | `auto_increment` | `bool` | Assign monotonic ids on insert. |
 | `encrypted` / `encrypted_indexable` | `bool` | Page-level AES-GCM encryption for at-rest columns. |
 

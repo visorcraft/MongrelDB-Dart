@@ -66,6 +66,7 @@ void main() {
             // The keys under test: enum constraint and column default.
             'enum_variants': <String>['a', 'b', 'c'],
             'default_value': 'a',
+            'default_expr': 'uuid',
           },
         ], constraints: {
           'checks': [
@@ -106,6 +107,7 @@ void main() {
         // with their original values intact.
         expect(status['enum_variants'], <String>['a', 'b', 'c']);
         expect(status['default_value'], 'a');
+        expect(status['default_expr'], 'uuid');
         expect(
           ((decoded['constraints'] as Map<String, dynamic>)['checks'] as List)
               .first['name'],

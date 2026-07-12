@@ -302,7 +302,10 @@ class MongrelDB {
 
   /// Insert a row. [cells] maps column id to value (`{1: 1, 2: 'Alice'}`).
   ///
-  /// Returns the per-op result object, or an empty map if none.
+  /// Returns the per-op result object, or an empty map if none. The map carries
+  /// the batch's commit `epoch` (the visible epoch at which the write landed)
+  /// when the daemon reports one, so callers can drive `AS OF EPOCH` time-travel
+  /// reads without a separate round-trip.
   Future<Map<String, dynamic>> put(
     String table,
     Map<int, Object?> cells, {
@@ -319,15 +322,13 @@ class MongrelDB {
       payload['idempotency_key'] = idempotencyKey;
     }
     final r = await post('/kit/txn', payload);
-    final data = r.json() as Map<String, dynamic>? ?? const {};
-    final results = (data['results'] as List?) ?? const [];
-    if (results.isNotEmpty && results.first is Map<String, dynamic>) {
-      return results.first as Map<String, dynamic>;
-    }
-    return {};
+    return _txnResult(r);
   }
 
   /// Upsert a row (insert or update on PK conflict).
+  ///
+  /// Returns the per-op result object. As with [put], the commit `epoch` is
+  /// injected under the `epoch` key when the daemon reports one.
   Future<Map<String, dynamic>> upsert(
     String table,
     Map<int, Object?> cells, {
@@ -347,12 +348,23 @@ class MongrelDB {
       payload['idempotency_key'] = idempotencyKey;
     }
     final r = await post('/kit/txn', payload);
+    return _txnResult(r);
+  }
+
+  /// Decode a `/kit/txn` response into the first op result, tagging it with
+  /// the batch's commit `epoch` (when the server reports one) so callers can
+  /// address the exact visible epoch of a write.
+  Map<String, dynamic> _txnResult(Response r) {
     final data = r.json() as Map<String, dynamic>? ?? const {};
     final results = (data['results'] as List?) ?? const [];
-    if (results.isNotEmpty && results.first is Map<String, dynamic>) {
-      return results.first as Map<String, dynamic>;
+    final op = (results.isNotEmpty && results.first is Map<String, dynamic>)
+        ? Map<String, dynamic>.from(results.first as Map)
+        : <String, dynamic>{};
+    final epoch = data['epoch'];
+    if (epoch is num) {
+      op['epoch'] = epoch.toInt();
     }
-    return {};
+    return op;
   }
 
   /// Delete a row by its internal row id.

@@ -303,42 +303,40 @@ void main() {
         return;
       }
 
-      // Open a wide window before any writes.
+      // Open a wide window before any writes so every epoch written below
+      // stays readable through AS OF EPOCH.
       await db.setHistoryRetentionEpochs(10000);
-      final baseEpoch = await db.earliestRetainedEpoch();
       expect(await db.historyRetentionEpochs(), 10000);
 
       final table = 'dart_retention_${DateTime.now().microsecondsSinceEpoch}';
       await db.createTable(table, _columns);
-      await db.put(table, {1: 1, 2: 'first', 3: 1.0});
-      await db.upsert(
+
+      // The daemon boots with a non-zero default retention window, so
+      // earliestRetainedEpoch is a floor that sits well below the current
+      // epoch. Anchor time-travel reads on the commit epoch each write
+      // returns (the visible epoch the write landed at) instead of guessing
+      // offsets above the floor.
+      final firstEpoch =
+          (await db.put(table, {1: 1, 2: 'first', 3: 1.0}))['epoch'] as int;
+      final secondEpoch = (await db.upsert(
         table,
         {1: 1, 2: 'first', 3: 1.0},
         updateCells: {2: 'second', 3: 2.0},
-      );
+      ))['epoch'] as int;
 
-      // earliestRetainedEpoch is the floor, not the current epoch. The writes
-      // above advance the current epoch, so probing a small range above the
-      // floor should find both the original and updated values.
-      String? firstLabel;
-      String? laterLabel;
-      for (var offset = 0; offset <= 5; offset++) {
-        final rows = await db.sql(
-          'SELECT label FROM $table AS OF EPOCH ${baseEpoch + offset} '
-          'WHERE id = 1',
-        );
-        if (rows.isNotEmpty) {
-          final label = rows.first['label'] as String?;
-          if (firstLabel == null) {
-            firstLabel = label;
-          } else if (label != firstLabel) {
-            laterLabel = label;
-            break;
-          }
-        }
-      }
-      expect(firstLabel, 'first');
-      expect(laterLabel, 'second');
+      // The upsert is a separate transaction, so its commit epoch must
+      // advance past the insert's.
+      expect(secondEpoch, greaterThan(firstEpoch));
+
+      final atFirst = await db.sql(
+        'SELECT label FROM $table AS OF EPOCH $firstEpoch WHERE id = 1',
+      );
+      expect(atFirst.first['label'], 'first');
+
+      final atSecond = await db.sql(
+        'SELECT label FROM $table AS OF EPOCH $secondEpoch WHERE id = 1',
+      );
+      expect(atSecond.first['label'], 'second');
     });
 
     test('lowering retention advances earliest and drops old epochs', () async {

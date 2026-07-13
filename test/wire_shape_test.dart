@@ -47,6 +47,16 @@ class _RecordingTransport extends HttpTransport {
 }
 
 void main() {
+  test('top-level 409 error maps to ConstraintException', () async {
+    final fake = _RecordingTransport(
+      status: 409,
+      body: '{"status":"error","message":"epoch is no longer retained"}',
+    );
+    final db = MongrelDB('http://test.invalid', transport: fake);
+
+    expect(db.sql('SELECT 1'), throwsA(isA<ConstraintException>()));
+  });
+
   group('createTable wire shape', () {
     test('preserves every static JSON scalar including literal now', () {
       for (final value in <Object?>['text', 3, true, null, 'now']) {

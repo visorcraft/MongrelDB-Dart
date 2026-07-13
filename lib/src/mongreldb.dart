@@ -159,10 +159,12 @@ class MongrelDB {
       }
     }
 
-    final err = json?['error'];
+    final nestedError = json?['error'];
+    final err = nestedError is Map<String, dynamic> ? nestedError : json;
     final String message;
-    if (err is Map<String, dynamic> && err['message'] is String) {
-      message = err['message'] as String;
+    final errorMessage = err?['message'];
+    if (errorMessage is String) {
+      message = errorMessage;
     } else {
       message = body;
     }
@@ -182,8 +184,8 @@ class MongrelDB {
       case 409:
         throw ConstraintException(
           message.isNotEmpty ? message : 'Constraint violation',
-          errorCode: (err['code'] as String?) ?? '',
-          opIndex: err['op_index'] as int?,
+          errorCode: (err?['code'] as String?) ?? '',
+          opIndex: err?['op_index'] as int?,
         );
       default:
         throw QueryException(

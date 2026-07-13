@@ -249,6 +249,7 @@ try {
 | `where(type, params)` | Add a native condition |
 | `projection(columnIds)` | Set column projection |
 | `limit(limit)` | Set row limit |
+| `offset(offset)` | Skip matching rows before the limit |
 | `build()` | Build the request payload |
 | `execute()` | Run the query |
 | `truncated` | Whether the last result was capped by the limit |

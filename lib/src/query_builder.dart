@@ -20,6 +20,7 @@ class QueryBuilder {
   final List<Map<String, dynamic>> _conditions = [];
   List<int>? _projection;
   int? _limit;
+  int? _offset;
 
   bool _lastTruncated = false;
 
@@ -47,6 +48,12 @@ class QueryBuilder {
     return this;
   }
 
+  /// Skip matching rows before applying the limit.
+  QueryBuilder offset(int offset) {
+    _offset = offset;
+    return this;
+  }
+
   /// Build the outgoing `/kit/query` payload.
   Map<String, dynamic> build() {
     final payload = <String, dynamic>{'table': _table};
@@ -58,6 +65,9 @@ class QueryBuilder {
     }
     if (_limit != null) {
       payload['limit'] = _limit;
+    }
+    if (_offset != null) {
+      payload['offset'] = _offset;
     }
     return payload;
   }

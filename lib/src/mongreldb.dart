@@ -21,6 +21,7 @@ import 'dart:convert';
 import 'http_transport.dart';
 import 'mongreldb_exception.dart';
 import 'query_builder.dart';
+import 'search_builder.dart';
 import 'transaction.dart';
 
 export 'http_transport.dart' show Response, HttpTransport;

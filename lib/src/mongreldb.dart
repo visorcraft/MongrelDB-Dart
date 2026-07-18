@@ -26,6 +26,7 @@ import 'transaction.dart';
 export 'http_transport.dart' show Response, HttpTransport;
 export 'mongreldb_exception.dart';
 export 'query_builder.dart' show QueryBuilder;
+export 'search_builder.dart' show SearchBuilder;
 export 'transaction.dart' show Transaction;
 
 /// MongrelDB client.
@@ -393,6 +394,9 @@ class MongrelDB {
 
   /// Start a fluent query builder.
   QueryBuilder query(String table) => QueryBuilder(this, table);
+
+  /// Start a hybrid [SearchBuilder] (POST `/kit/search`).
+  SearchBuilder search(String table) => SearchBuilder(this, table);
 
   /// Execute SQL against the daemon's DataFusion-backed `/sql` endpoint.
   ///

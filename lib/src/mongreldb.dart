@@ -273,11 +273,13 @@ class MongrelDB {
   /// Create a table. [columns] is a list of column descriptors.
   /// Returns the new table id reported by the daemon.
   Future<int> createTable(String name, List<Map<String, Object?>> columns,
-      {Map<String, Object?>? constraints}) async {
+      {Map<String, Object?>? constraints,
+      List<Map<String, Object?>>? indexes}) async {
     final r = await post('/kit/create_table', {
       'name': name,
       'columns': columns,
       if (constraints != null) 'constraints': constraints,
+      if (indexes != null) 'indexes': indexes,
     });
     final data = r.json();
     if (data is Map<String, dynamic>) {

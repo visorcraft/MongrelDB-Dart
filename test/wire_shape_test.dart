@@ -87,6 +87,17 @@ void main() {
             'default_value': 'a',
             'default_expr': 'uuid',
           },
+          {
+            'id': 3,
+            'name': 'embedding',
+            'ty': 'embedding(384)',
+            'embedding_source': {
+              'kind': 'configured_model',
+              'provider_id': 'docs',
+              'model_id': 'model',
+              'model_version': '1',
+            },
+          },
         ], constraints: {
           'checks': [
             {
@@ -102,7 +113,27 @@ void main() {
               },
             },
           ],
-        });
+        }, indexes: [
+          {'name': 'bm', 'column_id': 2, 'kind': 'bitmap'},
+          {'name': 'fm', 'column_id': 2, 'kind': 'fm_index'},
+          {
+            'name': 'ann',
+            'column_id': 3,
+            'kind': 'ann',
+            'predicate': 'embedding IS NOT NULL',
+            'options': {
+              'ann': {
+                'm': 24,
+                'ef_construction': 96,
+                'ef_search': 48,
+                'quantization': 'dense',
+              },
+            },
+          },
+          {'name': 'range', 'column_id': 1, 'kind': 'learned_range'},
+          {'name': 'minhash', 'column_id': 2, 'kind': 'minhash'},
+          {'name': 'sparse', 'column_id': 2, 'kind': 'sparse'},
+        ]);
 
         // Request line + URL are stable.
         expect(fake.lastMethod, 'POST');
@@ -117,7 +148,7 @@ void main() {
 
         final columns =
             (decoded['columns'] as List).cast<Map<String, dynamic>>();
-        expect(columns, hasLength(2));
+        expect(columns, hasLength(3));
 
         final status = columns[1];
         expect(status['name'], 'status');
@@ -127,6 +158,19 @@ void main() {
         expect(status['enum_variants'], <String>['a', 'b', 'c']);
         expect(status['default_value'], 'a');
         expect(status['default_expr'], 'uuid');
+        expect(columns[2]['embedding_source']['kind'], 'configured_model');
+        final indexes =
+            (decoded['indexes'] as List).cast<Map<String, dynamic>>();
+        expect(indexes.map((index) => index['kind']), [
+          'bitmap',
+          'fm_index',
+          'ann',
+          'learned_range',
+          'minhash',
+          'sparse'
+        ]);
+        expect(indexes[2]['options']['ann']['quantization'], 'dense');
+        expect(indexes[2]['predicate'], 'embedding IS NOT NULL');
         expect(
           ((decoded['constraints'] as Map<String, dynamic>)['checks'] as List)
               .first['name'],

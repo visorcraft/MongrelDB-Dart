@@ -223,7 +223,7 @@ try {
 |---|---|
 | `health()` | Check daemon health |
 | `tableNames()` | List table names |
-| `createTable(name, columns, {constraints})` | Create a table, returns table id; optional native constraints object is forwarded |
+| `createTable(name, columns, {constraints, indexes})` | Create a table with optional constraints and all index definitions |
 | `dropTable(name)` | Drop a table |
 | `count(table)` | Row count |
 | `put(table, cells, {idempotencyKey})` | Insert a row |

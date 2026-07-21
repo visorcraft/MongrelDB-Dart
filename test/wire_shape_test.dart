@@ -127,6 +127,8 @@ void main() {
                 'ef_construction': 96,
                 'ef_search': 48,
                 'quantization': 'dense',
+                'algorithm': 'diskann',
+                'diskann': {'r': 64, 'l': 128, 'beam_width': 8, 'alpha': 120},
               },
             },
           },
@@ -170,6 +172,8 @@ void main() {
           'sparse'
         ]);
         expect(indexes[2]['options']['ann']['quantization'], 'dense');
+        expect(indexes[2]['options']['ann']['algorithm'], 'diskann');
+        expect(indexes[2]['options']['ann']['diskann']['r'], 64);
         expect(indexes[2]['predicate'], 'embedding IS NOT NULL');
         expect(
           ((decoded['constraints'] as Map<String, dynamic>)['checks'] as List)

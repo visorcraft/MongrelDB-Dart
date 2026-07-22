@@ -16,10 +16,9 @@ class _RecordingTransport extends HttpTransport {
   String? lastBody;
   Map<String, String> lastHeaders = <String, String>{};
 
-  final int status;
   final String body;
 
-  _RecordingTransport({this.status = 200, this.body = '{}'});
+  _RecordingTransport({this.body = '{}'});
 
   @override
   Future<Response> request(
@@ -32,7 +31,7 @@ class _RecordingTransport extends HttpTransport {
     lastUrl = url;
     lastBody = body;
     lastHeaders = Map<String, String>.from(headers);
-    return Response(status, this.body);
+    return Response(200, this.body);
   }
 }
 

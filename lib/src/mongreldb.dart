@@ -18,12 +18,15 @@ library;
 
 import 'dart:convert';
 
+import 'durable.dart';
 import 'http_transport.dart';
 import 'mongreldb_exception.dart';
 import 'query_builder.dart';
 import 'search_builder.dart';
 import 'transaction.dart';
 
+export 'durable.dart'
+    show CommitHlc, DurableOutcome, QueryStatus, TextRetrieveResult;
 export 'http_transport.dart' show Response, HttpTransport;
 export 'mongreldb_exception.dart';
 export 'query_builder.dart' show QueryBuilder;
@@ -400,6 +403,59 @@ class MongrelDB {
 
   /// Start a hybrid [SearchBuilder] (POST `/kit/search`).
   SearchBuilder search(String table) => SearchBuilder(this, table);
+
+  /// Text → embed under active semantic identity → ANN retrieve
+  /// (`POST /kit/retrieve_text`, 0.64+).
+  ///
+  /// Returns [TextRetrieveResult] with `hits` and `provenance`.
+  Future<TextRetrieveResult> retrieveText(
+    String table,
+    int embeddingColumn,
+    String text, {
+    int? k,
+  }) async {
+    final payload = <String, dynamic>{
+      'table': table,
+      'embedding_column': embeddingColumn,
+      'text': text,
+      if (k != null) 'k': k,
+    };
+    final r = await post('/kit/retrieve_text', payload);
+    return TextRetrieveResult.fromJson(r.json());
+  }
+
+  /// Retained SQL execution status for durable recovery
+  /// (`GET /queries/{query_id}`).
+  Future<QueryStatus> queryStatus(String queryId) async {
+    if (queryId.isEmpty) {
+      throw QueryException('mongreldb: query_id is required');
+    }
+    final r = await get('/queries/${_encodeSegment(queryId)}');
+    final data = r.json();
+    if (data is! Map<String, dynamic>) {
+      throw QueryException(
+        'mongreldb: query status response was not a JSON object: ${r.body}',
+      );
+    }
+    return QueryStatus.fromJson(data);
+  }
+
+  /// Request cancellation of a running SQL query
+  /// (`POST /queries/{query_id}/cancel`).
+  Future<Map<String, dynamic>> cancelQuery(String queryId) async {
+    if (queryId.isEmpty) {
+      throw QueryException('mongreldb: query_id is required');
+    }
+    final r = await post(
+      '/queries/${_encodeSegment(queryId)}/cancel',
+      <String, dynamic>{},
+    );
+    final data = r.json();
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    return <String, dynamic>{};
+  }
 
   /// Execute SQL against the daemon's DataFusion-backed `/sql` endpoint.
   ///

@@ -11,7 +11,7 @@ running `mongreldb-server`, and doing your first round-trip of CRUD and query.
 
   ```sh
   curl -L -o mongreldb-server \
-    https://github.com/visorcraft/MongrelDB/releases/download/v0.64.4/mongreldb-server-linux-x64
+    https://github.com/visorcraft/MongrelDB/releases/download/v0.64.5/mongreldb-server-linux-x64
   chmod +x mongreldb-server
   ./mongreldb-server ./data --port 8453
   ```
@@ -22,7 +22,7 @@ Add the dependency to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mongreldb: ^0.64.4
+  mongreldb: ^0.64.5
 ```
 
 Then fetch packages:

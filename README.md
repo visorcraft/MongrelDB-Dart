@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://pub.dev/packages/mongreldb"><img src="https://img.shields.io/pub/v/mongreldb.svg" alt="Pub" /></a>
+  <a href="https://github.com/visorcraft/MongrelDB-Dart"><img src="https://img.shields.io/badge/install-git%20dependency-0175C2.svg" alt="Install from GitHub" /></a>
   <a href="https://dart.dev/"><img src="https://img.shields.io/badge/Dart-%3E%3D3.0-0175C2.svg" alt="Dart" /></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License" /></a>
 </p>
@@ -18,7 +18,16 @@
 
 | Surface | Package | Install |
 |---|---|---|
-| Dart client | `mongreldb` | `dart pub add mongreldb` |
+| Dart client | `mongreldb` | `dart pub add mongreldb --git-url https://github.com/visorcraft/MongrelDB-Dart.git` |
+
+The package is not yet published to pub.dev, so install it as a git
+dependency (the command above), or add it to `pubspec.yaml` directly:
+
+```yaml
+dependencies:
+  mongreldb:
+    git: https://github.com/visorcraft/MongrelDB-Dart.git
+```
 
 ## Requirements
 

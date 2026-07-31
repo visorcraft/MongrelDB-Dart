@@ -18,11 +18,19 @@ running `mongreldb-server`, and doing your first round-trip of CRUD and query.
 
 ## Install
 
-Add the dependency to `pubspec.yaml`:
+The package is not yet published to pub.dev, so install it as a git
+dependency:
+
+```sh
+dart pub add mongreldb --git-url https://github.com/visorcraft/MongrelDB-Dart.git
+```
+
+Or add it to `pubspec.yaml` directly:
 
 ```yaml
 dependencies:
-  mongreldb: ^0.64.14
+  mongreldb:
+    git: https://github.com/visorcraft/MongrelDB-Dart.git
 ```
 
 Then fetch packages:

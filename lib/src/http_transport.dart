@@ -58,7 +58,7 @@ class HttpTransport {
     }
     client = HttpClient()
       ..idleTimeout = idleTimeout
-      ..userAgent = 'mongreldb-dart/0.67.0';
+      ..userAgent = 'mongreldb-dart/0.67.1';
     _client = client;
     return client;
   }
